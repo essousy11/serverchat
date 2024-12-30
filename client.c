@@ -61,14 +61,24 @@ int main() {
 
     printf("Connected to the server successfully!\n");
 
-    // Envoyer un message au serveur
-    const char *message = "Hello from client!";
-    SSL_write(ssl, message, strlen(message));
+    // Communication entre le client et le serveur
+    char buffer[1024];
+    while (1) {
+        printf("Enter message to send to server: ");
+        fgets(buffer, sizeof(buffer), stdin);
+        buffer[strcspn(buffer, "\n")] = 0; // Supprimer le saut de ligne
 
-    // Lire la réponse du serveur
-    char buffer[1024] = {0};
-    SSL_read(ssl, buffer, sizeof(buffer));
-    printf("Server response: %s\n", buffer);
+        if (strcmp(buffer, "exit") == 0) {
+            printf("Exiting...\n");
+            break;
+        }
+
+        SSL_write(ssl, buffer, strlen(buffer));
+
+        memset(buffer, 0, sizeof(buffer));
+        SSL_read(ssl, buffer, sizeof(buffer));
+        printf("Server: %s\n", buffer);
+    }
 
     SSL_shutdown(ssl);
     SSL_free(ssl);
