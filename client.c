@@ -29,20 +29,43 @@ int main() {
     init_openssl();
     SSL_CTX *ctx = create_context();
 
+    // Charger le certificat du serveur pour la vérification
+    if (!SSL_CTX_load_verify_locations(ctx, "server.crt", NULL)) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
     int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("Unable to create socket");
+        exit(EXIT_FAILURE);
+    }
+
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT);
     inet_pton(AF_INET, SERVER_IP, &addr.sin_addr);
 
-    connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("Connection failed");
+        exit(EXIT_FAILURE);
+    }
 
     SSL *ssl = SSL_new(ctx);
     SSL_set_fd(ssl, sock);
-    SSL_connect(ssl);
 
-    SSL_write(ssl, "Hello from client!", strlen("Hello from client!"));
+    if (SSL_connect(ssl) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
 
+    printf("Connected to the server successfully!\n");
+
+    // Envoyer un message au serveur
+    const char *message = "Hello from client!";
+    SSL_write(ssl, message, strlen(message));
+
+    // Lire la réponse du serveur
     char buffer[1024] = {0};
     SSL_read(ssl, buffer, sizeof(buffer));
     printf("Server response: %s\n", buffer);
